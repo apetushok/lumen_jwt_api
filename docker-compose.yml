@@ -1,0 +1,69 @@
+version: '3'
+services:
+
+  #PHP Service
+  api:
+    build:
+      context: .
+      dockerfile: ./docker/php/Dockerfile
+    container_name: api
+    restart: unless-stopped
+    tty: true
+    environment:
+      SERVICE_NAME: api
+      SERVICE_TAGS: dev
+    working_dir: /var/www
+    volumes:
+      - ./api:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - app-network
+
+  #Nginx Service
+  webserver:
+    image: nginx:alpine
+    container_name: webserver
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./api:/var/www
+      - ./docker/nginx/conf.d/:/etc/nginx/conf.d/
+    networks:
+      - app-network
+
+  #MySQL Service
+  db:
+    image: mysql:5.7.22
+    container_name: db
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: api
+      MYSQL_ROOT_PASSWORD: 3330
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - ./docker/mysql/dbdata:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - app-network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: phpmyadmin
+    ports:
+      - "89:80"
+    links:
+      - db:db
+    networks:
+      - app-network
+
+#Docker Networks
+networks:
+  app-network:
+    driver: bridge
